@@ -1,14 +1,14 @@
 # The Story of Open Source, Linux, and the Languages That Built Our World
 
-*Concise lecture notes for CS students — told as a story, because that is what it is.*
+*lecture notes for CS students narrated as a story*
 
 ---
 
 ## Prologue: What Does "Open" Actually Mean?
 
-Before we trace the arc of open source software, we need to be precise about what the word means. "Open source" does not mean "free of cost." It means the **source code** — the actual text files written in C, Python, or any other language — can be run, examined, modified, and redistributed by anyone. These rights are granted through **licenses**, and the entire philosophical and legal landscape of OSS turns on which license you choose.
+Before journeying the evolution of open source software, let's understand why the term was coined. "Open source" idoes not mean "free of cost," and was deliberately coined to avoid this exact confusion. It is a "freedom of modification" property of the **source code**, which comprises the actual text files written in C, Python, or any other language, can be run, examined, modified, and redistributed by anyone. These rights are granted through **licenses** (legal instrument which delineates who owns the code, and how one can run, modify and redistribute). The ideological and legal landscape of OSS differ with chosen license type.
 
-There are two schools of licensing. **Permissive licenses** (MIT, Apache 2.0) allow derivative works to be closed-source; they maximize adoption. MIT is the most minimal ("do whatever you want, just keep the copyright notice"), while Apache 2.0 adds explicit patent grants, which is why research labs and infrastructure projects (think Google's TensorFlow) prefer it. **Copyleft licenses** (GPL family) are restrictive by design: any derivative work must also be open-sourced under the same terms. The GPL is a legal instrument that enforces openness virally — if you use GPL code in your product, your product must also be GPL. This distinction — permissive vs. copyleft — is the single most consequential axis in OSS strategy.
+There are two schools of licensing. **Permissive licenses** (MIT, Apache 2.0) allow derivative works to be closed-source; used when we want to maximize adoption. MIT is the most minimal ("do whatever you want, just keep the copyright notice"), while Apache 2.0 adds explicit patent grants, which is why research labs and infrastructure projects (think Google's TensorFlow, Apache Spark) prefer it. **Copyleft licenses** (GPL family) are restrictive by design: any derivative work must also be open-sourced under the same terms. The GPL is a legal instrument that enforces nad perpetuates openness. If you use GPL code in your product, your product must also be GPL. This contrast b/w permissive vs. copyleft is the single most consequential axis in OSS strategy.
 
 Why does source code matter? Because sharing only the compiled executable (the binary) lets you *run* the program but not *study, modify, or redistribute* it. That is the definition of proprietary software. Open source requires that the source code itself is available.
 
@@ -20,19 +20,21 @@ A quick clarification on the landscape: OSS does not require an OSS operating sy
 
 ### The Bundled Era
 
-In the 1950s, software did not exist as a separate commercial entity. It was tightly coupled to hardware — sold as the thing you needed to operate the machine, bundled at no extra charge. Binaries compiled for one machine were useless on another. There was no portability, no reuse, no ecosystem.
+In the 1950s, software did not exist as a separate commercial entity. It was tightly coupled to hardware. It was sold along with H/W to operate the machine, bundled with no extra charge. Binaries compiled for one machine were useless on another. There was no *portability*, no reuse, no ecosystem.
 
 ### ARPANET and the Dawn of Collaboration
 
-In the 1960s, the U.S. Department of Defense funded ARPANET (1968), a distributed network connecting research computers. For the first time, developers at MIT, UC Berkeley, AT&T Bell Labs, and Xerox PARC could share code and collaborate remotely. This infrastructure was the precondition for everything that followed.
+In the 1960s, the U.S. Department of Defense funded ARPANET (1968), a distributed network connecting research computers. For the first time, developers at MIT, UC Berkeley, AT&T Bell Labs, and Xerox PARC could share code and collaborate remotely. This infrastructure (connecting computers) was the *precondition to collaboration* that was necessary for what came ahead.
 
 ### UNIX: The Operating System That Changed Everything
 
-At Bell Labs in 1969, **Ken Thompson** wrote UNIX in assembly language. The philosophy was radical for its time: small programs that each do one thing well, composed together via pipes and files. "Everything is a file."
+> Comment: Ken Thompson and Dennis Ritchie were engineers working with AT&T's Labs on an OS-related project that was too complicated and had to be given up. But they had learned what not to do.n --- NEED HELP HERE
 
-But assembly is ISA-specific — the OS was welded to one hardware architecture. This is where **Dennis Ritchie** enters. He developed the **C programming language** (1972–73) and rewrote UNIX in C, making it **portable**: write once, compile on different hardware. Before this, the standard practice was to rewrite the entire operating system from scratch for every new machine. C solved the portability problem, and UNIX solved the modularity problem. Together, they created the template for modern systems software.
+At Bell Labs in 1969, **Ken Thompson** wrote UNIX in assembly language. UNIX was an OS (definition of OS is amorphous). The foundational idea was to make small prgrams that do one thing very well and then they could be combined and composed with files and pipes *"Everything is a file."*
 
-The key insight: C was not designed to be elegant or safe. It was designed to be *close enough to the metal* to write an operating system, while being *abstract enough* to compile across architectures. That trade-off — power and portability at the cost of safety — defined systems programming for the next fifty years.
+But assembly is ISA-specific, killing portability. UNIX was welded to one hardware architecture. This is where **Dennis Ritchie** enters. He developed the **C programming language** (1972–73) and rewrote UNIX in C, making it **portable**: write once, compile on different hardware. Before this, the standard practice was to rewrite the entire operating system from scratch for every new machine. C solved the portability problem, and UNIX solved the modularity problem. Together, they created the template for modern systems software.
+
+The key insight: C was not designed to be elegant or safe. It was designed to be *close enough to the metal* to write an operating system, while being *abstract enough* to compile across architectures. This trade-off b/w power and portability at the cost of safety defined systems programming for the next fifty years.
 
 ---
 
@@ -40,7 +42,7 @@ The key insight: C was not designed to be elegant or safe. It was designed to be
 
 ### BSD: Berkeley Takes UNIX and Runs
 
-AT&T, constrained by antitrust regulation, could not sell software commercially. So they gave UNIX to **UC Berkeley**, where researchers improved it into **BSD** (Berkeley Software Distribution). BSD added the TCP/IP networking stack, virtual memory, and an improved file system — contributions so fundamental that Apple later used BSD as the foundation for macOS. The lineage runs: UNIX → BSD → Darwin → macOS. Every time you open a Mac terminal, you are touching code whose ancestry traces back to 1970s Berkeley.
+AT&T, constrained by antitrust regulation, could not sell software commercially. So they gave UNIX to **UC Berkeley**, where researchers improved it into **BSD** (Berkeley Software Distribution). BSD added the TCP/IP networking stack, virtual memory, and an improved file system. These contributions were so fundamental that Apple later used BSD as the foundation for macOS. The lineage runs: UNIX → BSD → Darwin → macOS. Every time you open a Mac terminal, you are touching code whose ancestry traces back to 1970s Berkeley.
 
 ### TeX and Emacs: Two Seeds
 
@@ -54,7 +56,10 @@ At MIT, **Richard Stallman** created **Emacs**, a programmable text editor that 
 
 ### The Trigger
 
-In the early 1980s, companies realized software could be sold independently of hardware — and began closing their source code. AT&T reversed its open policy on UNIX, restricted access, and sued BSD. Stallman, who had watched the MIT AI Lab's culture of open sharing erode as companies hired away researchers and locked down code, decided to fight back.
+The catalyst came in 1981, when the Bell System was broken up. For decades, antitrust regulations had prevented AT&T from commercializing software directly. But after the breakup, those restrictions no longer applied to the part of AT&T that held UNIX. The company aggressively began commercializing UNIX as "System V," and the previously unified ecosystem immediately fragmented. By the mid-1980s, the landscape had become chaotic: incompatible commercial UNIX variants emerged from multiple vendors—SunOS, Microsoft XENIX, and others—each with proprietary modifications layered on top, making them mutually incompatible. BSD, developed at UC Berkeley, uniquely remained free and was notably the only UNIX variant with TCP/IP networking; but it too came under legal assault from AT&T, who sued to protect its newfound monopoly.
+
+Stallman, who had watched the MIT AI Lab's culture of open sharing erode as companies hired away researchers and locked down code, saw this fragmentation and corporate enclosure as a symptom of something deeper: software had been transformed into a closed, proprietary weapon, and the problem was not just AT&T but the entire structure of ownership that made this possible. He decided to fight back not by adapting to one of the commercial variants or defending BSD against litigation, but by building something entirely independent: a complete, free, UNIX-compatible operating system that belonged to no corporation and carried no legal encumbrance from UNIX's contested history.
+
 
 ### GNU and the Four Freedoms
 
@@ -76,19 +81,19 @@ GNU had compilers, debuggers, shells, and utilities. It had everything except th
 
 ### Linus Torvalds and the Kernel
 
-In **1991**, a 21-year-old computer science student at the University of Helsinki named **Linus Torvalds** wanted to learn operating system design. He was dissatisfied with Minix, a teaching OS by Andrew Tanenbaum that had licensing restrictions preventing modification. So he wrote his own kernel — the **Linux kernel** — and released it under the **GPL**.
+In **1991**, a 21-year-old computer science student at the University of Helsinki named **Linus Torvalds** wanted to learn operating system design. He was dissatisfied with Minix, a teaching OS by Andrew Tanenbaum that had licensing restrictions preventing modification. So he wrote his own kernel, the **Linux kernel** and released it under the **GPL**, after listening to Richard Stallman's talk at campus.
 
 The timing was perfect. GNU had all the userspace tools but no kernel. Linux was a kernel with no userspace tools. Combined, they formed a complete, free operating system: **GNU/Linux**. This combination, bundled with different desktop environments, package managers, and configuration philosophies, produced what we call **Linux distributions**.
 
 ### Python Arrives (1991)
 
-In the same year, independently, **Guido van Rossum** released **Python** — designed from the ground up for simplicity, readability, and rapid prototyping. Python's philosophy ("there should be one obvious way to do it") was the polar opposite of C's philosophy ("give the programmer maximum power and trust them not to shoot themselves in the foot"). Python did not aim to replace C for systems programming. It aimed to make programming accessible to a vastly larger population of people — scientists, analysts, students, and eventually machine learning researchers who would reshape the industry two decades later.
+In the same year, independently, **Guido van Rossum** released **Python** and was designed from the ground up for simplicity, readability, and rapid prototyping. Python's philosophy ("there should be one obvious way to do it") was the polar opposite of C's philosophy ("give the programmer maximum power and trust them not to shoot themselves in the foot"). Python did not aim to replace C for systems programming. It aimed to make programming accessible to a vastly larger population of people like scientists, analysts, students, and eventually machine learning researchers who would reshape the industry two decades later.
 
 ### The Distribution Family Tree
 
 Linux distributions proliferated along distinct philosophical lines:
 
-**Debian** (1993), created by Ian Murdock (the name combines his then-girlfriend Debra's name with his own), was community-driven and committed to fully free software. It became the most stable and widely-forked distribution, fathering **Ubuntu** (2004, by Canonical, aimed at making Linux beginner-friendly), **Kali Linux** (security testing), and **Raspberry Pi OS**.
+**Debian** (1993), created by Ian Murdock (the name combines his then-wife Debra's name with his own), was community-driven and committed to fully free software. It became the most stable and widely-forked distribution, fathering **Ubuntu** (2004, by Canonical, aimed at making Linux beginner-friendly), **Kali Linux** (security testing), and **Raspberry Pi OS**.
 
 **Red Hat** (1994) proved that open source could be a successful business. Red Hat Enterprise Linux (RHEL) provided stability, security, and paid support for enterprise customers — generating billions in revenue before being acquired by IBM. Its descendants include **Fedora** (Linus Torvalds' personal distribution of choice) and **CentOS**.
 
