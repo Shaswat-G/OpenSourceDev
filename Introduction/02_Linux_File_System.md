@@ -50,25 +50,25 @@
 
 ### A Brief History: DOS, Windows, and UNIX
 
-To understand why Linux organizes its files the way it does, it helps to contrast it with Windows — the other dominant operating system most people are familiar with.
+To understand how and why Linux organizes its files in a particular way, we will justapose it with Windows.
 
-**The DOS/Windows lineage** begins with MS-DOS (Microsoft Disk Operating System), a command-line-only environment that predates graphical interfaces. In DOS, everything revolves around *drives* identified by letters. The letters `A:` and `B:` were reserved for floppy disk drives — physical removable disks that you could slot in and out of a machine. When hard drives arrived, `C:` became the conventional name for the primary internal drive, and additional drives or partitions followed alphabetically (`D:`, `E:`, and so on). This letter-based scheme stuck. Windows started as a graphical desktop environment (a GUI) that ran *on top of* MS-DOS — you literally typed `win` at the DOS prompt to launch it. Over time, from Windows NT onward, Microsoft gradually replaced DOS with a fully independent kernel, but the drive-letter convention and the directory structure it inherited (like `C:\Program Files\`, `C:\Windows\System32\`) remain to this day.
+**The DOS/Windows lineage** begins with MS-DOS (Microsoft Disk Operating System), a command-line-only environment that predates graphical interfaces. In DOS, everything revolves around *drives* identified by letters. The letters `A:` and `B:` were reserved for floppy disk drives which were physically removable floppy disks. When hard drives arrived, `C:` became the conventional name for the primary internal drive, and additional drives or partitions followed alphabetically (`D:`, `E:`, and so on). Windows started as a graphical desktop environment (a GUI) that ran *on top of* MS-DOS. Windows NT onward, Microsoft gradually replaced DOS with a fully independent kernel (removing any DOS dependency towards independent boot), but the drive-letter convention and the directory structure it inherited (like `C:\Program Files\`, `C:\Windows\System32\`) remain to this day.
 
-**The UNIX/Linux lineage** is fundamentally different. UNIX, developed at Bell Labs in the late 1960s, designed its file system around a single *tree* rooted at `/` (called "the root"). Everything — hard drives, removable media, network shares, even hardware devices — appears somewhere in this single tree. There are no drive letters; instead, a disk partition or USB stick gets "mounted" at a directory within the tree, and from that point on, it's accessed as if it were just a subdirectory. This unified namespace is more elegant and flexible for multi-user, networked environments.
+**The UNIX/Linux lineage** is fundamentally different. UNIX designed its file system around a single *tree* rooted at `/` (called "the root"). Everything including hard drives, removable media, network shares, even hardware devices appear in a well-principled region on this tree. There are no drive letters; instead, a disk partition or USB stick gets "mounted" at a directory within the tree, and from that point on, it's accessed as if it were just a subdirectory. This unified namespace is elegant and flexible for *multi-user, networked environments*.
 
-Linux follows UNIX traditions. A few practical consequences flow from this directly:
+Linux follows UNIX tradition:
 
 - Paths use **forward slashes**: `/home/shaswat/documents/thesis.pdf`
 - **Filenames are case-sensitive**: `File.txt`, `file.txt`, and `FILE.TXT` are three distinct files
-- **Hidden files start with a dot**: `.bashrc`, `.config/` — any file or directory beginning with `.` is hidden from normal directory listings (use `ls -a` to reveal them)
+- **Hidden files start with a dot**: `.bashrc`, `.config/` and any file or directory beginning with `.` is hidden from normal directory listings (use `ls -a` to reveal them)
 
-> **What is POSIX?** POSIX (Portable Operating System Interface) is a family of standards defined by the IEEE that specifies how operating systems should behave — what system calls exist, how the shell works, what utilities are available, and how the file system should be structured. Being "POSIX-compliant" means a system follows these rules, making software portable across UNIX-like systems. Linux is largely POSIX-compliant, which is why shell scripts and programs written on macOS often work on Linux with little or no modification.
+> **What is POSIX?** POSIX (Portable Operating System Interface) is a family of standards defined by the IEEE that specifies how operating systems should behave. what system calls exist, how the shell works, what utilities are available, and how the file system should be structured. Being "POSIX-compliant" means a system follows these rules, making software portable across UNIX-like systems. Linux is largely POSIX-compliant, which is why shell scripts and programs written on macOS often work on Linux with little or no modification.
 
 ---
 
 ### The File Hierarchy Standard (FHS)
 
-The **File Hierarchy Standard (FHS)**, maintained by the Linux Foundation, is the document that formally defines what belongs where in a Linux file system. It specifies the minimum set of directories and files every Linux system must have, describes the *purpose* of each directory, and establishes naming conventions. Software authors use this to know where to install their files; users and administrators use it to know where to look for things.
+The **File Hierarchy Standard (FHS)** is guiding standard laid down and maintained by the Linux Foundation defining the strcuture, function, principles and purpose for the organization and membership of the file hierarchy with conventions.
 
 The latest version, FHS 3.0, is available at: https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html
 
@@ -76,7 +76,7 @@ The latest version, FHS 3.0, is available at: https://refspecs.linuxfoundation.o
 
 ### Two Key Axes
 
-The FHS organizes the file system along two independent axes. Understanding these makes the overall structure click into place.
+The FHS organizes the file system along two independent axes:
 
 **Axis 1: Shareable vs. Non-Shareable**
 
@@ -84,7 +84,7 @@ A *shareable* file is one that can safely be stored on one machine and accessed 
 
 **Axis 2: Static vs. Variable**
 
-A *static* file is one that does not change unless a system administrator explicitly modifies it — binaries, libraries, documentation. A *variable* file changes during normal operation — log files grow, mail spools fill up, databases update. This distinction matters for two practical reasons: (1) static files can be on a read-only filesystem for security, and (2) variable files need more frequent backup.
+A *static* file is one that does not change unless a system administrator explicitly modifies it. Files like binaries, libraries, documentation. A *variable* file changes during normal operation, such as log files grow, mail spools fill up, databases update. This distinction matters for two practical reasons: (1) static files can be on a read-only filesystem for security, and (2) variable files need more frequent backup.
 
 These two axes carve the filesystem into four quadrants:
 
@@ -121,7 +121,7 @@ Every user on the system gets a dedicated subdirectory inside `/home`. For a use
 
 **What lives inside your home directory:**
 
-Your home directory contains both *visible* files and folders (Documents, Downloads, Desktop, Pictures, etc.) and *hidden* configuration files and directories. The hidden ones — identified by a leading dot — are created automatically by applications the first time they run, and store per-user settings so that configuration is isolated between users on the same machine.
+Your home directory contains both *visible* files and folders (Documents, Downloads, Desktop, Pictures, etc.) and *hidden* configuration files and directories. The hidden ones are identified by a leading dot and are created automatically by applications the first time they run, and store per-user settings so that configuration is isolated between users on the same machine.
 
 The three most important hidden directories follow the **XDG Base Directory Specification**, a standard that organizes where applications store their data:
 
@@ -172,7 +172,7 @@ chmod +x ~/.local/bin/my_script
 
 ### `/root` — The Superuser's Home
 
-`/root` is the home directory of the `root` user — the system's superuser (administrator). It exists at `/root` rather than `/home/root` for a deliberate reason: the `/home` directory might be on a separate disk partition. If that partition fails to mount during boot, the root user would be locked out of their own home directory, which would be catastrophic during system recovery. By keeping `/root` on the root partition itself, the superuser always has access.
+`/root` is the home directory of the `root` user or the system's superuser (administrator). It exists at `/root` rather than `/home/root` for a deliberate reason: the `/home` directory might be on a separate disk partition. If that partition fails to mount during boot, the root user would be locked out of their own home directory, which would be catastrophic during system recovery. By keeping `/root` on the root partition itself, the superuser always has access.
 
 Normal users cannot read or write to `/root`. It's protected by permissions (mode `0700` by default — read, write, execute for owner only).
 
@@ -190,7 +190,7 @@ whoami
 id
 ```
 
-> **A note on security:** Even if you have `sudo` access, the best practice is to avoid working as root directly. Use `sudo` for individual commands that require it. This limits the blast radius of mistakes — a mistyped `rm -rf` as root can destroy the entire system, while the same mistake as a normal user only destroys your home directory.
+> **A note on security:** Even if you have `sudo` access, the best practice is to avoid working as root directly. Use `sudo` for individual commands that require it. This limits the blast radius of mistakes. A mistyped `rm -rf` as root can destroy the entire system, while the same mistake as a normal user only destroys your home directory.
 
 ---
 
@@ -198,7 +198,7 @@ id
 
 ### `/bin` — Essential User Binaries
 
-> **What is a binary?** "Binary" is shorthand for a compiled, executable program — as opposed to a script, which is plain text. When you write a C program and compile it, the output is a binary: a file containing machine code that the processor can execute directly.
+> **What is a binary?** "Binary" is shorthand for a compiled, executable program, as opposed to a script, which is plain text. When you write a C program and compile it, the output is a binary: a file containing machine code that the processor can execute directly.
 
 `/bin` contains the essential command-line tools that every user needs for the system to be functional. These commands must be available even in single-user mode (a minimal recovery environment) or before other partitions are mounted. Examples include:
 
@@ -236,7 +236,7 @@ man cat
 
 ### `/sbin` — System Administration Binaries
 
-`/sbin` holds binaries intended for system administration tasks — commands that typically require root privileges and are not needed for routine user activity. Think of it as the administrator's toolkit.
+`/sbin` holds binaries intended for system administration tasks. These are commands that typically require root privileges and are not needed for routine user activity. Think of it as the administrator's toolkit.
 
 Examples:
 
@@ -277,7 +277,7 @@ sudo shutdown -c
 
 ### `/usr` — User Application Space
 
-`/usr` is the largest directory on most Linux systems and the most layered in terms of structure. The name originally stood for "Unix System Resources" (not "user" as one might guess). It holds *non-essential* software — everything the system needs to run (kernel, shell, basic utilities) is in `/bin`, `/sbin`, and `/lib`. Everything else — the applications you actually use — lives in `/usr`.
+`/usr` is the largest directory on most Linux systems and the most layered in terms of structure. The name originally stood for "Unix System Resources" (not "user" as one might guess). It holds *non-essential* software; everything the system needs to run (kernel, shell, basic utilities) is in `/bin`, `/sbin`, and `/lib`. Everything else, the applications you actually use, lives in `/usr`.
 
 The key subdirectories within `/usr` are:
 
@@ -356,9 +356,9 @@ sudo tar -xzf my-tool-v1.0.tar.gz -C /opt/my-tool --strip-components=1
 
 > **What are shared libraries? (And what are DLLs?)**
 >
-> When a program is compiled, it uses code from external libraries — reusable collections of functions. There are two ways to include that code: (1) *static linking*, where the library code is copied directly into the executable at compile time, making the binary self-contained but large; and (2) *dynamic linking*, where the binary is compiled with only a reference to the library, and the actual code is loaded at runtime from a shared file.
+> When a program is compiled, it uses code from external libraries as reusable collections of functions. There are two ways to include that code: (1) *static linking*, where the library code is copied directly into the executable at compile time, making the binary self-contained but large; and (2) *dynamic linking*, where the binary is compiled with only a reference to the library, and the actual code is loaded at runtime from a shared file.
 >
-> On Linux, these shared files are called **shared objects** and have the extension `.so` (e.g., `libc.so.6`). On Windows, the equivalent is a **DLL** (Dynamic Link Library), files with the `.dll` extension. The concept is identical — a single file containing compiled library code that multiple programs can share simultaneously in memory, reducing both disk usage and RAM consumption.
+> On Linux, these shared files are called **shared objects** and have the extension `.so` (e.g., `libc.so.6`). On Windows, the equivalent is a **DLL** (Dynamic Link Library), files with the `.dll` extension. The concept is identical. A single file containing compiled library code that multiple programs can share simultaneously in memory, reducing both disk usage and RAM consumption.
 >
 > The advantage is efficiency: if 20 programs all use the C standard library, they share one copy of `libc.so` in memory rather than each embedding their own. The trade-off is the "DLL hell" problem — if a library is updated in a way that breaks its interface, it can break all programs that depend on it simultaneously.
 
@@ -456,7 +456,7 @@ echo 1 | sudo tee /sys/bus/usb/devices/usb1/authorized
 
 ### `/proc` — Process & Kernel Information
 
-`/proc` (the "procfs" filesystem) is a virtual filesystem, like `/sys`, that exposes information about running processes and the kernel. Each running process gets a directory named after its **PID** (Process ID) — a unique integer assigned by the kernel to identify it. Inside that directory are files that describe everything about the process: memory usage, open file descriptors, the command that launched it, environment variables, and more.
+`/proc` (the "procfs" filesystem) is a virtual filesystem, like `/sys`, that exposes information about running processes and the kernel. Each running process gets a directory named after its **PID** (Process ID). It is a unique natural number assigned by the kernel to identify it. Inside that directory are files that describe everything about the process: memory usage, open file descriptors, the command that launched it, environment variables, and more.
 
 Beyond processes, `/proc` also exposes kernel-wide information.
 
@@ -501,7 +501,7 @@ cat /proc/net/tcp
 
 ### `/dev` — Device Files
 
-One of UNIX's most elegant ideas is that *everything is a file*, including hardware devices. `/dev` contains **device files** — special files that represent physical or virtual hardware. When a program reads from or writes to one of these files, the kernel translates that operation into the appropriate hardware interaction.
+One of UNIX's most elegant ideas is that *everything is a file*, including hardware devices. `/dev` contains **device files** which are special files that represent physical or virtual hardware. When a program reads from or writes to one of these files, the kernel translates that operation into the appropriate hardware interaction.
 
 Device files come in two types:
 
@@ -561,7 +561,7 @@ sudo smartctl -a /dev/sda
 
 ### `/etc` — System-Wide Configuration
 
-`/etc` is the nerve center for system-wide configuration. The name is a remnant from early UNIX — it literally meant "et cetera," a catch-all for files that didn't fit elsewhere — but it has long since become the dedicated home for editable configuration files. The key word is *system-wide*: files here affect all users and all services. User-specific configuration lives in `~/.config/`.
+`/etc` is the nerve center for system-wide configuration. The name is a remnant from early UNIX and it literally meant "et cetera," a catch-all for files that didn't fit elsewhere. But it has long since become the dedicated home for editable configuration files. The key word is *system-wide*: files here affect all users and all services. User-specific configuration lives in `~/.config/`.
 
 `/etc` contains plain-text files and directories, which makes it possible to manage configuration with standard text editors and version control (many administrators track `/etc` in a Git repository).
 
@@ -792,7 +792,7 @@ sudo mount /dev/sdb1 /media/$USER/my_drive
 
 ### `/mnt` — Manual Mount Point
 
-`/mnt` is a generic, manually managed mount point. You use it when you want to attach something yourself: an additional hard drive, a network share, a disk image, or a partition you're working on. Unlike `/media`, nothing auto-mounts here — you're in full control.
+`/mnt` is a generic, manually managed mount point. You use it when you want to attach something yourself: an additional hard drive, a network share, a disk image, or a partition you're working on. Unlike `/media`, nothing auto-mounts here.
 
 ```bash
 # Create a subdirectory in /mnt for clarity (good practice)
