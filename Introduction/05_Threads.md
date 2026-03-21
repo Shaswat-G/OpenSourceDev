@@ -297,15 +297,44 @@ Operating System
 
 
 
+## Inter Process Communication
+Independent Process can run independently while cooperating processes need to share data with each other.
+Cooperation can lead to faster computation (data parallelism) or divison of labor and specialization (modularity with task parallelism)
+Thus, we need a mechanism for processes to **coordinate** and **synchronize**.
 
+There are boradly only 2 solutions:
 
+### 1. Shared Memory
+Usually, the OS together with the MMU and page tables virtualize the memory that the process sees and enforeces memory isolation (one process can not r/w/x any other memory address outside its own address space layout). However, in the memory sharing model, using system calls, one process can agree to share a memory region with another so both processes can interact (r/w/x) with the shared region.
 
+However, what is written, at what address and how it is read is not managed by the OS, but instead, by the processes.
+This can cause issues (Eg: in a producer consumer arch, a producer process writes 8 bit signed integers to a buffer in this shared space, while a consumer
+process reads it as 16 bit unsigned integers, completely misreading the data.). This can cuase undefined behavior.
 
+Eg: The Chromium browser runs as (1 web browser process responsible for UI and user I/O, n renderer processes for n tabs, and m plugin processes for m plugins)
 
+This is fast for sharing large amounts of data.
 
+### 2. Message Passing
+Writing and reading from shared memory causes problems (RACE conditions, will discuss in thread sync) among others, so the OS provides a message passing
+mechanism as an alternative. Primitives are:
+1. Pipes: Unidirectional communication link (using pipe() sys call in C), There is something called FIFO pipes which are named files that allow bidirectional communcaiton.
+2. Sockets: Client server architecture.
+3. RPCs: A Protocol that helps one process on machine to request service from a process in another machine without understanding network details. The message has to well structured, it has tobe addressed to the RPC listener daemon on the remote server, with the identifier of the function / resource and parameters for the same. The function is then executed on the remote server and sent back to the client. The detials of the network are hidden and abstracted via a remote-proceedure "stubs" on the client side. The stub  locates the port on the server and amrshals (packaging params in a way that can be sent over a network, it handles serialization and deserialization) the parameters. A server side stub will receievd, unpack and pass this info to the server process. The core idea is to hide and abstract away the compleixty of talking over a network and expose this to something which looks like a local function call.
 
+All of these follow the same basic structure. A system call to open such a connection (or logical link) is requested by one process, and this link, once established forms the channel to send messages. At the physical level, the kernel creates a queue of messasges in its own address space (priveleged), and therefore the kernel has to expose system calls like send(to_process, message) and receive(from_process). The behavior of the queque can change with requirements -> sync vs async, bucket or buffer style (unbounded vs bounded) etc. For full duplex communication, we can have 2 message queues in the kernel space so each process can send and receive messages.
 
+1. Naming: Under direct communication, process P and Q; P can send a message like send(Q, message), and Q can receive a message form P, receive(P). With indirect communication, we can think of posting messages on a mailbox and reading messages from the mail box.
+2. Blocking / Non-blocking: this is async vs sync communication, do one, both or none of sender and receiver wait (block) for messages dispatch and receipt. The queue size is 0 (for perfect sync), bounded or unbounded.
 
+Such mailboxes are called ports. 
 
+A process could have a general port (listening) so any other process can send a conneciton request to this process and then open a separate secure port for communcations.
 
-LEARN IPC, and integrate notes.
+The logical architecture of message passing can thus be extended beyond a single core CPU + RAM computer to different computers on a network, with the added complexity of device drivers, NIC programming.
+
+The client server architecutre is built on "sockets" (HTTP, HTTPS, FTP, SSH). In such cases, the IP address identifies the machine, and port identifies the mailbox to send the message to.
+
+TCP vs UDP?
+
+Transport with HTTP1.0/2.0/3.0 ? What are these

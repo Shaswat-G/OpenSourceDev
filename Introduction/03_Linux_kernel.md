@@ -21,7 +21,7 @@ Everything above "kernel" is firmware. Everything below "kernel" is userspace. T
 
 ## 1. Firmware: UEFI
 
-The first C code (and some assembly) that is executed by the CPU when the machine powers on. Lives in flash memory on the motherboard, with a fixed address the CPU executes by setting up stack in the CPU cache since RAM is not initialized yet. Its obviously not a part of the OS, but bridges the gap between powere on and unconnected live hardware to an integrated computer that can allows OS to run.
+The first C code (and some assembly) that is executed by the CPU when the machine powers on. Lives in flash memory (Read-Only Memory) on the motherboard, with a fixed address the CPU executes by setting up stack in the CPU cache since RAM is not initialized yet. Its obviously not a part of the OS, but bridges the gap between powere on and unconnected live hardware to an integrated computer that can allows OS to run.
 
 1. Power-On Self Test (POST) — During secure boot, it checks its own cryptograhic checksums, loads itself, verifies that RAM, CPU, and storage are functional.
 2. Loads Device Drivers.

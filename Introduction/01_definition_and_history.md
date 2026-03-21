@@ -216,3 +216,14 @@ Every time you `git clone` a repository, compile code with GCC, run a Python scr
 ---
 
 *Topics flagged for deeper study: process monitoring and control (`ps`, `htop`, signals like `SIGKILL`, `SIGTERM`), system daemons and background processes, cron jobs and scheduling, the ext4 filesystem in detail, and the full lifecycle of a process (creation, scheduling, context switching, termination).*
+
+
+
+## Intro
+
+1. Memory Hierarchy
+2. Device Controllers vs Device Drivers
+3. How does IO happen?
+4. Virtual Machines vs containers: Abstract H/W like CPU, memory, network to give the illusion to a running process that it is running ina completely different environemnt. There is a H/W virtualization layer that sits on top of the H/W and each VM provides a separate kernel and user processes.
+5. IPC, sync and threads
+6. PL : Compilers, Assemblers, Interpreters, heap, stack, garbage collection
