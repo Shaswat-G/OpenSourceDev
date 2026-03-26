@@ -50,3 +50,122 @@ Tar has a greater size than the sum of the file sizes since it also store metada
 Creation of a file creates a unique INode number that identifies a file, its data container and metadata that the kernel can refer to a file as. A symlink is a soft link that points to the same INode.
 
 learngitbranching.js.org?
+
+## Textprocessing
+We compose a variety of commands together to achieve powerful text-processing.
+
+
+### Grep:
+Grep is used for searching "lines" in text (stdout of a command or file). Primarily used for filtering.
+Useful flags : i (case insensitive search), n (line numbers), v (invert search), R (recursive search in directory), E (regex pattern). Can be used for searching errors, warnings, timeouts, fatal in server logs, todos in a directory, non-comment lines in a config, etc.
+Eg: git -iR TODO .
+git -E "error|warning|fatal" < server_logs.log
+
+### fd
+fd is a friendlier version of find, and it is used to find files and directories.
+Useful flags: -e (extension), -t (f for only files, d for only directories), 
+Eg: fd -e py code/repo/package/module
+fd -e log /var/log/ | xargs wc -l
+
+
+### cut
+cut is used to extract a fields (a range of fields, a set of fields starting from 1) from a delimited text structure. f for field and c for character
+eg: cut -d, -f1-5 data.csv
+grep -niv "^#" /etc/passwd | cut -d: -f1,5
+
+### paste
+Opposite of cut. It combines text streams together with a delimiter on a line by line basis.
+paste -d, names.txt scores.txt
+
+### expand and unexpand 
+used to standardize tabs and spaces.
+
+### sort
+sorts text. -n (for numberical), -t, k2 (delimiter , and field 2). sort names.txt | uniq
+Uniq only removes adjacent duplicates.
+
+### tr
+Character translation. .lower(), .upper(), reduce spaces, trim spaces, etc.
+echo "hello" | tr 'a-z' 'A-Z'
+echo "he2l4l5o" | tr -d '0-9'
+echo "hellllooo" | tr -s "l,o"
+echo "a,b,c,d" | tr ',' '\n'
+
+fd -e md -t f | xargs wc -w | sort -n | tr -s " " | tr " " "," | cut -d, -f2
+
+### tee
+allws you to display what is written to file on screen too. Helps debug pipelines.
+
+
+Most frequently appearing words:
+tr ' ' '\n' < text.txt | sort | uniq -c | sort -n
+
+### awk
+One of the most powerful extraction tools - lets you select, filter, aggregate, project text by treating it as line by line records with fields as delimiter separated columns.
+
+$0 -> represents the entire record (line)
+$1, $2, ... -> represent the first field, second field, and so on
+NL -> Number of fields
+NR -> Number of records
+
+
+## Process Management
+  kill
+
+  Send a signal to a process, usually related to stopping the process.
+  All signals except for SIGKILL and SIGSTOP can be intercepted by the process to perform a clean exit.
+  More information: https://manned.org/kill.1posix.
+
+  Terminate a program using the default SIGTERM (terminate) signal:
+
+    kill process_id
+
+  List available signal names (to be used without the SIG prefix):
+
+    kill -l
+
+  Terminate a program using the SIGHUP (hang up) signal. Many daemons will reload instead of terminating:
+
+    kill -HUP process_id
+
+  Terminate a program using the SIGINT (interrupt) signal. This is typically initiated by the user pressing <Ctrl c>:
+
+    kill -INT process_id
+
+  Signal the operating system to immediately terminate a program (which gets no chance to capture the signal):
+
+    kill -KILL process_id
+
+  Signal the operating system to pause a program until a SIGCONT ("continue") signal is received:
+
+    kill -STOP process_id
+
+  Send a SIGUSR1 signal to all processes with the given GID (group id):
+
+    kill -SIGUSR1 -group_id
+
+
+To run a Linux command in the background, all you have to do is to add an ampersand (&) at the end of the command, like this:
+
+your_command &
+
+Background processes are those that run without user interaction, allowing the shell to be used for other commands simultaneously. These processes are non-blocking, meaning they do not prevent you from executing additional commands while they are running.
+
+A background process is typically started by appending an & at the end of the command. For instance, when you run:
+
+$ tar -czf archive.tar.gz large_directory/ &
+
+Foreground processes are those that run directly in the terminal and require user interaction. These processes involve direct interaction with the user, receiving input and displaying output directly to the terminal.
+
+When a foreground process runs, it blocks the shell, preventing other commands from being executed until the process completes.
+
+For example, running a text editor like nano in the terminal will block further commands until the editor is closed.
+
+Resuming a Background Process
+If you have a paused process or one that's already running in the background, you can make it start running again using the bg (background) command. To resume the most recently paused or backgrounded job, simply type:
+
+$ bg %1
+
+To bring it back to the foreground, use fg %1. Similar to bg, you use the job number:
+
+$ fg %1
