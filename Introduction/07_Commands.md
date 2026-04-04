@@ -4,9 +4,14 @@ This file is meant as a reference for non-basic commands in Linux.
 ## About Commands
 A command is either a bulit-in shell utility, an executable binary or script, alias or keyword.
 1. type - tells you what the command is, a keyword, alias, a shell-built in or an executable.
-2. which - (TODO)
-3. whatis - (TODO)
-4. whereis - (TODO)
+2. apropos - Fuzzy seach for commands over documentation, behaves like a google search. Use to generate candidate commands for a task.
+2. whatis - Gives a quick one line description / definition for quick reference
+3. command --help - gives you a shallow usage and options, program determined, not standardized.
+4. which - gives you the path of the executable that will run the command.
+5. whereis - gives you the path of all the executables that will run the command, useful when you have multiple versions of a command installed and want to know which one is being used. Searches over the executables and man pages.
+
+## Shell
+A shell is a command line interpreter that provides a UI for users to run commands. A login shell is a shell that requires a login. An interactive shell is a shell where input and output streams are connected to the terminal. A non-interactive shell is a shell where input and output streams are not connected to the terminal, such as when running a script. A shell can be both login and interactive, or just one of them.
 
 ## Environment Variables
 Key-value pairs (names) that a terminal session has access to. They can be created, inspected, set and deleted. shell vairables only exist in the current session and can only be accesses by inside the terminal and not by any child processes, and also lost once the session closes. Env vars exported during a session can be accessed by child processes but do not persist across sessions. For that, we can add an export line to the ~/.zshrc file.
@@ -53,6 +58,9 @@ learngitbranching.js.org?
 
 ## Textprocessing
 We compose a variety of commands together to achieve powerful text-processing.
+
+## Regex:
+Regular expressions are a string matching language that is used to search and extract patterns in text. They are used in many commands like grep, sed, awk, find etc. They have syntax to specify literals, character calsses, quantifiers, anchors, groups and metacharacters.
 
 
 ### Grep:
