@@ -43,6 +43,20 @@ command < input-file : reads from input-file
 command > output-file : create/overwrites output-file
 command >> output-file :  Append to output-file
 
+To redirect both stdout and stderr to the same file:
+
+ls nonexistentfile > output.txt 2>&1
+
+For commands:
+$(command) : captures the stdout of the command and allows you to use it as a string in another command. It is also called command substitution. Eg: echo "Today is $(date)"
+
+For arithemetic, we use double curly braces $((expression)). Eg: echo "The sum of 2 and 3 is $((2 + 3))"
+
+Single quotes are not expandable, in the sense the content is treated as a literal string, and variables and command substitution are not expanded. Double quotes allow for expansion of variables and command substitution.
+Eg: echo 'Today is $(date)' will print "Today is $(date)", while echo "Today is $(date)" will print "Today is Wed Jun 5 12:00:00 UTC 2024" (or whatever the current date and time is).
+
+
+
 ## Archiving and Compressing:
 Many times we need to archive a directory tree (with multiple subdirectories and files) into one tape archive, we use tar for this. We optionally run compression on it using gzip to make the size less for transmisison. I personally have used scp for transferring a .tar.gz (gzip compressed taped archive) from a remote ssh server to my local machine and vice versa.
 
