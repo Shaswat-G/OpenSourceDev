@@ -914,3 +914,968 @@ The table below distills the entire FHS into a single, scannable reference. The 
 ---
 
 *This document follows the Linux Foundation's File Hierarchy Standard (FHS) 3.0. For the authoritative specification, see: https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html*
+
+
+**Understand the why** — Each directory embodies a semantic commitment:
+   - `/bin` = "I boot the OS"
+   - `/etc` = "I'm a system policy"
+   - `/var/lib` = "I'm data you can't regenerate"
+   - `/var/cache` = "I'm a speedup you can throw away"
+   - `/var/log` = "I'm an audit record"
+   - `/run` = "I live until the next reboot"
+   - `/tmp` = "I'm garbage you can delete anytime"
+
+
+# Linux Filesystem: Complete Production Taxonomy
+## Including ML, Data Apps, Caches, Web Services, and Distributed Systems
+
+---
+
+## DECISION AXES (MECE)
+
+### Primary Axis: Static vs Dynamic
+- **Static**: Compiled, built, fixed at deployment time
+- **Dynamic**: Generated at runtime, mutable, grows over time
+
+### Secondary Axis: Ownership
+- **System** (root, distro-managed)
+- **Service/Daemon** (app-specific user like `postgres`, `www-data`)
+- **User** (individual user home)
+
+### Tertiary Axis: Lifecycle
+- **Persistent**: Survives reboots indefinitely
+- **Boot-cycle**: Exists until next reboot, cleaned on shutdown
+- **Ephemeral**: Safe to delete anytime
+
+### Quaternary Axis: Content Type
+- Executables
+- Libraries & dependencies
+- Configuration
+- Data (persistent state)
+- Cache (derived, regenerable)
+- Logs (audit trail)
+- Runtime metadata (PIDs, sockets)
+- Read-only reference data (code examples, docs, fonts, assets)
+- User-served content (web pages, uploads)
+- Models & large inference files
+
+---
+
+## COMPLETE DIRECTORY TAXONOMY
+
+### BINARIES & EXECUTABLES
+
+#### `/bin` and `/sbin`
+**Semantics**: System boot-critical executables
+- **Contents**: ls, cat, mount, init, systemctl, basic shell utilities
+- **Owner**: OS distribution (root)
+- **Lifecycle**: Persistent; replaced on OS upgrade
+- **Decision trigger**: "Do I need this tool before /usr mounts?"
+- **Example**: `ls` is in /bin because it's needed in single-user mode
+- **Production note**: Most modern systems symlink to /usr/bin
+
+#### `/usr/bin` and `/usr/sbin`
+**Semantics**: Distribution-provided application binaries
+- **Contents**: git, python, nginx, postgresql, docker, npm
+- **Owner**: Package manager (apt, yum, pacman)
+- **Lifecycle**: Persistent; replaced when package is upgraded
+- **Decision trigger**: "Is this provided by a distro package?"
+- **Example**: `apt install nginx` → `/usr/bin/nginx`
+- **Production note**: Conflict zone: manual upgrades vs package manager
+
+#### `/usr/local/bin` and `/usr/local/sbin`
+**Semantics**: Locally-compiled or manually-installed executables (survives distro upgrades)
+- **Contents**: go, rustc, internal-deploy (compiled from source), tools built by your team
+- **Owner**: System administrator or CI/CD pipeline
+- **Lifecycle**: Persistent; **preserved across distro upgrades**
+- **Decision trigger**: "Did I compile this locally, and should it survive distro upgrades?"
+- **Example**: 
+  ```bash
+  wget https://go.dev/dl/go1.21.linux-amd64.tar.gz
+  tar -C /usr/local -xzf go1.21.linux-amd64.tar.gz
+  # Go binary now at /usr/local/go/bin/go
+  ln -s /usr/local/go/bin/go /usr/local/bin/go
+  ```
+- **Backup**: Track in version control (not in binary form, but build scripts)
+
+#### `/opt/{vendor}/{app}`
+**Semantics**: Large, self-contained vendor applications with isolation
+- **Contents**: elasticsearch, mongodb, datadog-agent, custom large apps (100+ files with internal dependencies)
+- **Owner**: Vendor installer or custom deployment script
+- **Lifecycle**: Persistent; **complete isolation** from OS package ecosystem
+- **Decision trigger**: "Is this a large, self-contained app with >50 files and internal versioning?"
+- **Structure**:
+  ```
+  /opt/elasticsearch/
+    ├── bin/elasticsearch
+    ├── bin/elasticsearch-plugin
+    ├── config/elasticsearch.yml
+    ├── data/nodes/
+    ├── logs/elasticsearch.log
+    ├── plugins/
+    ├── lib/  (internal dependencies)
+    └── LICENSE.txt
+  ```
+- **Why isolated**: Uninstall = `rm -rf /opt/elasticsearch/` (clean, no leftover files)
+- **Production pattern**: Symlink for convenience:
+  ```bash
+  ln -s /opt/elasticsearch/bin/elasticsearch /usr/local/bin/elasticsearch
+  ```
+- **Example apps**: 
+  - Large databases: MongoDB, Cassandra, DataStax Astra
+  - Search engines: Elasticsearch, Solr, OpenSearch
+  - Distributed message brokers: Kafka, RabbitMQ
+  - ML platforms: MLflow, Kubeflow
+  - Monitoring: DataDog agent, New Relic agent
+  - Custom proprietary tools
+
+---
+
+### LIBRARIES & DEPENDENCIES
+
+#### `/lib`, `/lib64`
+**Semantics**: System libraries needed for core OS functionality
+- **Contents**: libc.so, libssl.so (SSL/TLS), libcrypto.so
+- **Owner**: OS distribution
+- **Lifecycle**: Persistent; replaced on OS upgrade
+- **Decision trigger**: "Is this a core system library needed at boot?"
+
+#### `/usr/lib`, `/usr/lib64`
+**Semantics**: Distribution-provided application libraries
+- **Contents**: Python packages via apt, shared object files (.so), plugins
+- **Owner**: Package manager
+- **Lifecycle**: Persistent; replaced when package upgraded
+- **Example**: 
+  ```
+  /usr/lib/python3/dist-packages/  (system Python packages from apt)
+  /usr/lib/x86_64-linux-gnu/       (compiled libraries)
+  ```
+
+#### `/usr/local/lib`, `/usr/local/lib64`
+**Semantics**: Locally-compiled libraries (survives distro upgrades)
+- **Contents**: Custom-built libraries, libraries compiled from source
+- **Owner**: System administrator
+- **Lifecycle**: Persistent; preserved across upgrades
+- **Example**:
+  ```bash
+  ./configure --prefix=/usr/local
+  make
+  make install
+  # Libraries go to /usr/local/lib
+  ```
+
+---
+
+### CONFIGURATION (Policy)
+
+#### `/etc/{app}`
+**Semantics**: System-wide configuration files (affects all processes and users)
+- **Contents**: nginx.conf, postgresql.conf, mysql.cnf, redis.conf
+- **Owner**: Root (administrator-edited)
+- **Lifecycle**: Persistent across reboots; preserved on package upgrade (with dpkg prompts)
+- **Permissions**: Usually 644 (readable by all, writable by root only)
+- **Decision trigger**: "Is this a global policy that affects the whole system?"
+- **Example structure**:
+  ```
+  /etc/nginx/
+    ├── nginx.conf           (main config)
+    ├── conf.d/              (additional site configs)
+    ├── sites-available/
+    └── sites-enabled/       (symlinks to active sites)
+  
+  /etc/postgresql/
+    ├── postgresql.conf      (main)
+    ├── pg_hba.conf          (authentication)
+    └── environment
+  
+  /etc/redis/
+    └── redis.conf
+  ```
+- **Backup strategy**: YES, version control all /etc/{app} (these are policies)
+- **Cluster deployment**: /etc configs are usually templated by Ansible/Terraform and deployed identically across all nodes
+
+#### `~/.config/{app}`
+**Semantics**: Per-user, application-specific preferences (doesn't affect other users)
+- **Contents**: VSCode settings, Git config, shell config
+- **Owner**: Individual user
+- **Lifecycle**: Persistent; survives OS upgrades
+- **Decision trigger**: "Does each user customize this independently, or is it system-wide?"
+- **Example**:
+  ```
+  ~/.config/git/config          (per-user Git settings)
+  ~/.config/vscode/settings.json (per-user VSCode)
+  ~/.bashrc, ~/.zshrc           (per-user shell config)
+  ```
+- **Note**: Most system **daemons** (nginx, postgres, redis) don't source ~/.config because they run as service users (www-data, postgres) that don't have home directories
+
+#### `/run/{app}.conf` or `/etc/systemd/system/{app}.service.d/`
+**Semantics**: Runtime overrides or systemd service configuration
+- **Contents**: systemd service files, systemd drop-in directives
+- **Use case**: Override ExecStart, set environment variables, modify resource limits
+- **Example**:
+  ```ini
+  [Service]
+  Environment="DATABASE_URL=postgres://..."
+  MemoryLimit=2G
+  CPUQuota=50%
+  ```
+
+---
+
+### DATA & STATE (Persistent)
+
+#### `/var/lib/{app}`
+**Semantics**: Persistent state the application **requires** to function (source of truth)
+- **Contents**: Database files, app state, internal data structures
+- **Owner**: Service user (postgres, mysql, mongodb, redis)
+- **Lifecycle**: Persistent across reboots; **never auto-deleted**
+- **Backup**: YES, **full backup required** (this is the source of truth)
+- **Decision trigger**: "Would deleting this cause data loss?"
+- **Examples**:
+  ```
+  /var/lib/postgresql/data/      (database tables, indexes, WAL)
+  /var/lib/mysql/                (database files)
+  /var/lib/mongodb/              (MongoDB data)
+  /var/lib/redis/                (Redis snapshots)
+  /var/lib/apt/cache/            (apt package cache; note: this is cached, not source of truth)
+  /var/lib/docker/               (Docker container storage, images)
+  /var/lib/elasticsearch/        (Elasticsearch indices and shards)
+  ```
+- **Permissions**: Usually 700 or 750 (only service user can read/write)
+- **Storage planning**: Often mounted on separate, high-reliability storage
+  ```bash
+  # Mount on fast NVMe or reliable SAN for database performance
+  mount /dev/nvme0n1 /var/lib/postgresql
+  mount /dev/sda1 /var/lib/elasticsearch  # Separate spindle for I/O parallelism
+  ```
+
+#### `/var/cache/{app}`
+**Semantics**: Derived data that **can be regenerated** (not source of truth)
+- **Contents**: Computed recommendations, thumbnails, compiled assets, parsed config
+- **Owner**: Service user (same as app)
+- **Lifecycle**: Persistent; **safe to delete**, app rebuilds on demand
+- **Backup**: NO (skip; cache is reconstructible)
+- **Decision trigger**: "Would deleting this slow down the app, but not break it?"
+- **Cleanup**: Manual or cron-based (e.g., `find /var/cache/myapp -mtime +30 -delete`)
+- **Examples**:
+  ```
+  /var/cache/apt/archives/       (downloaded .deb packages; can be purged)
+  /var/cache/myapp/thumbnails/   (image thumbnails; regenerated on access)
+  /var/cache/recommendation-engine/models/  (computed embeddings; can be re-run)
+  /var/cache/web-server/compiled/  (precompiled CSS/JS; can be rebuilt)
+  /var/cache/build/              (intermediate build artifacts)
+  ```
+- **Storage planning**: Can be on slower storage, can be cleaned aggressively
+  ```bash
+  # Safe to use local SSDs that are dropped during instance shutdown
+  mount /dev/nvme1n1 /var/cache/myapp
+  ```
+
+---
+
+### LOGS (Audit Trail)
+
+#### `/var/log/{app}`
+**Semantics**: Application output and audit trail (transient records of what happened)
+- **Contents**: access logs, error logs, debug logs, application stdout/stderr
+- **Owner**: Service user or root (written to by app, rotated by logrotate)
+- **Lifecycle**: Persistent but **auto-cleaned** (compressed, deleted after N days)
+- **Backup**: OPTIONAL (archive for compliance/audit, but not required for app recovery)
+- **Decision trigger**: "Is this a record of what happened, not state the app needs?"
+- **Cleanup**: Via `logrotate`, compressed daily/weekly, deleted after 7–30 days
+- **Examples**:
+  ```
+  /var/log/nginx/
+    ├── access.log           (HTTP requests)
+    ├── error.log            (HTTP errors)
+    ├── access.log.1.gz      (rotated, compressed)
+    └── access.log.7.gz      (oldest, next to be deleted)
+  
+  /var/log/postgresql/
+    ├── postgresql.log       (query logs, connection info)
+    └── postgresql-2024-03-01.log.gz
+  
+  /var/log/redis/
+    └── redis.log            (server events, slowlog)
+  
+  /var/log/mongodb/
+    └── mongod.log           (operation logs)
+  ```
+- **Volume**: Can be enormous (Nginx: 100+ MB/day on busy sites)
+- **Storage**: Separate filesystem to avoid filling `/var` and breaking database
+  ```bash
+  mount /dev/sdb1 /var/log  # Slower storage OK; logs are sequential I/O
+  ```
+- **Configuration**:
+  ```bash
+  # /etc/logrotate.d/nginx
+  /var/log/nginx/*.log {
+    daily
+    missingok
+    rotate 14        # keep 14 days
+    compress
+    notifempty
+    create 0640 www-data adm
+  }
+  ```
+
+#### `/run/log/journal` (Systemd journal)
+**Semantics**: Systemd-managed logs for services launched by systemd
+- **Contents**: Service startup/shutdown, application logs if journald-enabled
+- **Lifecycle**: Volatile (tmpfs-backed); cleared on reboot
+- **Query**: `journalctl -u nginx` (view logs for nginx service)
+- **Persistence**: Optionally persist to `/var/log/journal` if configured
+
+---
+
+### RUNTIME STATE (Boot-transient, ephemeral)
+
+#### `/run/{app}.pid`
+**Semantics**: Process ID file (used by init scripts to manage the app)
+- **Contents**: PID of the main process
+- **Owner**: Service user
+- **Lifecycle**: Created at startup, deleted at shutdown; cleared on reboot
+- **Storage**: tmpfs (RAM-backed)
+- **Purpose**: 
+  - Init scripts use it to stop/restart the app
+  - Prevents duplicate instances from starting
+  - Monitoring tools query it to check if app is running
+- **Examples**:
+  ```
+  /run/nginx.pid
+  /run/postgresql.pid
+  /run/redis.pid
+  /run/mongodb.pid
+  ```
+
+#### `/run/{app}/socket` (Unix domain sockets)
+**Semantics**: IPC endpoint for inter-process communication
+- **Contents**: Socket file (special file type)
+- **Owner**: Service user
+- **Lifecycle**: Created at startup, deleted on shutdown; cleared on reboot
+- **Storage**: tmpfs
+- **Purpose**: 
+  - Apps communicate without network overhead
+  - More secure than TCP (filesystem permissions)
+  - Lower latency than network sockets
+- **Examples**:
+  ```
+  /run/dbus/system_bus_socket        (D-Bus system socket)
+  /run/postgresql/.s.PGSQL.5432      (PostgreSQL Unix socket)
+  /run/redis.sock                    (Redis Unix socket)
+  /run/docker.sock                   (Docker daemon socket)
+  ```
+- **Permissions**: Usually 660 or 666 (group-writable for clients)
+
+#### `/run/lock/` (Legacy lockfiles)
+**Semantics**: Mutual exclusion for accessing shared resources
+- **Contents**: Lock files (often empty, presence indicates "locked")
+- **Owner**: Service user
+- **Lifecycle**: Cleared on reboot
+- **Note**: Superseded by `/run/{app}.pid` and systemd
+- **Deprecated**: Most modern apps use `/run/{app}.pid`
+
+---
+
+### EPHEMERAL STORAGE
+
+#### `/tmp`
+**Semantics**: Scratch space; any process can write; safe to delete anytime
+- **Contents**: Temporary files, upload buffers, build artifacts, temporary caches
+- **Owner**: Any user/process
+- **Lifecycle**: Cleared daily by `tmpwatch` or `systemd-tmpfiles`
+- **Permissions**: 1777 (sticky bit: users can delete only their own files)
+- **Storage**: Often tmpfs (RAM) but can be on disk
+- **Decision trigger**: "Is this ephemeral and safe to lose at any time?"
+- **Cleanup**: Automatic; files older than 10–30 days deleted
+- **When to use**:
+  ```
+  # Build artifacts
+  /tmp/build_xyz/          (compilation temporary files)
+  
+  # Upload buffers
+  /tmp/upload_buffer_12345  (file chunk during upload)
+  
+  # Session data
+  /tmp/session_data/       (temporary session storage)
+  
+  # Process-specific temps
+  /tmp/python_abc123/      (Python tempfile)
+  ```
+- **Pitfall**: If app writes socket to /tmp and tmpwatch deletes it after 7 days, app still running but socket gone → clients can't connect
+  - **Solution**: Write sockets to `/run` instead
+
+#### `/var/tmp`
+**Semantics**: Slower cleanup than /tmp; for larger or longer-lived temporary files
+- **Contents**: VM image building, large scratch files, data that should survive a few days
+- **Owner**: Any user/process
+- **Lifecycle**: Cleared after 30 days (longer than /tmp)
+- **Storage**: Always disk (not tmpfs)
+- **Decision trigger**: "Is this temporary but needs to survive longer than /tmp?"
+- **Examples**:
+  ```
+  /var/tmp/packer_build/     (Packer VM image building)
+  /var/tmp/large_download/   (partial downloads)
+  ```
+
+#### `/dev/shm`
+**Semantics**: POSIX shared memory; tmpfs-backed RAM disk
+- **Contents**: Named shared memory objects, memory-mapped files
+- **Owner**: Any user (usually same user for IPC)
+- **Lifecycle**: Cleared on reboot
+- **Storage**: RAM
+- **Use case**: Fast IPC between processes (faster than Unix sockets, no disk I/O)
+- **Examples**:
+  ```
+  # Python multiprocessing shared arrays
+  /dev/shm/mp_queue_12345
+  
+  # Databases doing shared buffer pools
+  /dev/shm/postgresql_shared_memory
+  ```
+- **Caution**: Takes RAM; large /dev/shm usage can OOM the system
+
+---
+
+### VIRTUAL FILESYSTEMS (Read-only views of kernel state)
+
+#### `/proc`
+**Semantics**: Process information as files (VFS, not on-disk)
+- **Contents**: Per-process directories (/proc/[pid]/), kernel info (/proc/meminfo, /proc/cpuinfo)
+- **Owner**: Kernel (read-only)
+- **Lifecycle**: Virtual; exists while kernel is running
+- **Query**: `cat /proc/meminfo`, `cat /proc/cpuinfo`, `cat /proc/[pid]/status`
+- **Examples**:
+  ```
+  /proc/1234/cmdline         (command-line of process 1234)
+  /proc/1234/environ         (environment variables)
+  /proc/1234/fd/             (open file descriptors)
+  /proc/1234/maps            (memory mappings)
+  /proc/meminfo              (RAM usage)
+  /proc/cpuinfo              (CPU details)
+  /proc/diskstats            (disk I/O stats)
+  /proc/net/tcp              (TCP connections)
+  ```
+- **Use**: Monitoring, debugging, process introspection
+
+#### `/sys`
+**Semantics**: Kernel subsystems and device information (VFS)
+- **Contents**: Device info, kernel parameters, power management
+- **Owner**: Kernel
+- **Lifecycle**: Virtual
+- **Write**: Writable for tuning kernel parameters (requires root)
+- **Examples**:
+  ```
+  /sys/devices/              (device tree)
+  /sys/kernel/               (kernel parameters)
+  /sys/class/net/            (network interfaces)
+  /sys/block/                (block devices)
+  ```
+- **Tuning**:
+  ```bash
+  # Increase TCP backlog
+  echo 2048 > /proc/sys/net/ipv4/tcp_max_syn_backlog
+  # Or: sysctl -w net.ipv4.tcp_max_syn_backlog=2048
+  ```
+
+---
+
+### READ-ONLY REFERENCE DATA
+
+#### `/usr/share/doc`
+**Semantics**: Package documentation (man pages, README files)
+- **Contents**: Upstream documentation, license files, examples
+- **Owner**: OS distribution
+- **Lifecycle**: Persistent; replaced on package upgrade
+- **Size**: Large (can be 500 MB+ on a full installation)
+- **Example**: `cat /usr/share/doc/nginx/README.Debian`
+
+#### `/usr/share/man`
+**Semantics**: Man pages for command documentation
+- **Contents**: Manual pages for every system command and library
+- **Owner**: OS distribution
+- **Query**: `man nginx`, `man postgresql`, `man 2 open`
+- **Purpose**: Built-in documentation (no internet needed)
+
+#### `/usr/share/info`
+**Semantics**: GNU info documentation
+- **Query**: `info coreutils`
+
+#### `/usr/share/fonts`
+**Semantics**: System fonts for rendering text
+- **Contents**: TrueType, OpenType, bitmap fonts
+- **Owner**: OS distribution (user fonts in ~/.fonts)
+- **Use**: Desktop apps, web servers serving custom fonts
+- **Examples**:
+  ```
+  /usr/share/fonts/truetype/
+  /usr/share/fonts/opentype/
+  ```
+
+#### `/usr/share/pixmaps`, `/usr/share/icons`
+**Semantics**: Icons and images for UI
+- **Contents**: Application icons, desktop icons, emojis
+- **Owner**: OS distribution + package icons
+- **Use**: Desktop environments, web UIs that ship icons
+
+#### `/usr/share/applications`
+**Semantics**: Desktop application metadata (.desktop files)
+- **Contents**: Application launchers for desktop environments
+- **Example**:
+  ```ini
+  # /usr/share/applications/firefox.desktop
+  [Desktop Entry]
+  Name=Firefox
+  Exec=firefox %u
+  Icon=firefox
+  ```
+
+#### `/usr/share/ca-certificates`
+**Semantics**: CA certificates for SSL/TLS verification
+- **Contents**: Root certificates (*.crt files)
+- **Owner**: OS distribution
+- **Use**: HTTPS validation, package manager certificate verification
+- **Update**: `update-ca-certificates` (regenerates /etc/ssl/certs)
+
+#### `/usr/share/zoneinfo`
+**Semantics**: Timezone database
+- **Contents**: Timezone definitions (tzdata)
+- **Owner**: OS distribution
+- **Use**: Time/date libraries to convert between zones
+- **Query**: `cat /usr/share/zoneinfo/America/New_York`
+
+---
+
+### USER-SERVED DATA (Web content)
+
+#### `/var/www/`
+**Semantics**: Default location for web server content
+- **Contents**: HTML, CSS, JS, static images served by Nginx/Apache
+- **Owner**: www-data user (web server) or specific app user
+- **Lifecycle**: Persistent
+- **Permissions**: 755 (readable by all, writable by owner)
+- **Structure**:
+  ```
+  /var/www/html/                 (default root)
+  /var/www/myapp/                (per-app structure)
+    ├── public/                  (static files)
+    ├── uploads/                 (user uploads)
+    └── sessions/                (session data)
+  ```
+- **Backup**: YES (user content)
+- **Decision trigger**: "Is this content served to end-users?"
+
+#### `/srv/`
+**Semantics**: Service data directory (alternative to /var/www)
+- **Contents**: Web content, FTP files, Git repos, user-served data
+- **Owner**: Service user or root
+- **Lifecycle**: Persistent
+- **Decision trigger**: "Is this data for a service but not a standard web app?"
+- **Structure**:
+  ```
+  /srv/www/                      (web content)
+  /srv/ftp/                      (FTP server files)
+  /srv/git/                      (Git repositories)
+  /srv/data/myapp/               (per-app data)
+  ```
+- **When to prefer /srv over /var/www**: 
+  - Multiple services serving data
+  - Custom applications (not standard web apps)
+  - Emphasis on "data for this service" rather than "web root"
+- **Example**:
+  ```
+  /srv/nextcloud/data/           (user files)
+  /srv/diaspora/uploads/         (social network uploads)
+  /srv/git-server/repos/         (Git repositories)
+  ```
+- **Backup**: YES (user content)
+
+---
+
+### ML & DATA SCIENCE SPECIFIC
+
+#### `/var/lib/ml/models/`
+**Semantics**: Trained ML models (large binary files, source of truth for inference)
+- **Contents**: PyTorch .pth files, TensorFlow SavedModel, ONNX models, weights
+- **Owner**: ML service user or root
+- **Lifecycle**: Persistent
+- **Backup**: YES (critical; models take weeks to train)
+- **Storage**: Large (can be 500 MB – 100 GB+ for LLMs)
+- **Structure**:
+  ```
+  /var/lib/ml/models/
+    ├── bert-base-uncased/        (model directory)
+    ├── gpt2/
+    └── custom-classifier-v3/
+  ```
+- **Decision trigger**: "Is this a trained model needed for inference?"
+- **Best practice**: Version control model paths
+  ```bash
+  /var/lib/ml/models/bert-base-uncased/pytorch_model.bin
+  # Keep version in path or symlink to latest:
+  ln -s bert-base-uncased.v2.0 bert-base-uncased-latest
+  ```
+
+#### `/var/cache/ml/datasets/`
+**Semantics**: Training datasets (large, preprocessed, can be regenerated)
+- **Contents**: Training data files, preprocessed numpy arrays, parquet files
+- **Owner**: ML training service
+- **Lifecycle**: Persistent; safe to delete (can re-download or preprocess)
+- **Backup**: NO (regenerable; keep original raw data elsewhere)
+- **Storage**: Very large (can be 100s of GB)
+- **Decision trigger**: "Is this preprocessed data for training (not the trained model)?"
+- **Structure**:
+  ```
+  /var/cache/ml/datasets/
+    ├── imagenet/               (can be re-downloaded)
+    ├── wikitext/               (preprocessed corpus)
+    └── my-custom-dataset.pkl
+  ```
+- **Cleanup**: Safe to `rm -rf /var/cache/ml/datasets/` and re-download
+
+#### `/var/lib/ml/experiments/`
+**Semantics**: Training run metadata and checkpoints
+- **Contents**: Experiment logs, tensorboard events, model checkpoints during training
+- **Owner**: ML training service
+- **Lifecycle**: Persistent (until training complete, then archive)
+- **Backup**: MAYBE (depends on if you want to resume interrupted training)
+- **Structure**:
+  ```
+  /var/lib/ml/experiments/
+    ├── exp-001-lr-0.001/
+    │   ├── checkpoints/
+    │   │   ├── epoch-10.pth
+    │   │   └── epoch-20.pth (best)
+    │   ├── logs/
+    │   │   └── events.out.tfevents...
+    │   └── config.json
+    └── exp-002-lr-0.0001/
+  ```
+
+#### `/var/cache/ml/feature-store/`
+**Semantics**: Precomputed features for ML (cached derived features)
+- **Contents**: Feature vectors, embeddings, aggregated statistics
+- **Owner**: ML service
+- **Lifecycle**: Persistent; safe to delete (recomputed on demand)
+- **Backup**: NO (cache)
+- **Decision trigger**: "Are these computed features used by models (not trained models)?"
+
+---
+
+### DISTRIBUTED SYSTEMS & DATABASES
+
+#### `/var/lib/postgresql/`
+**Semantics**: PostgreSQL database files
+- **Structure**:
+  ```
+  /var/lib/postgresql/
+    ├── data/                      (actual data)
+    │   ├── base/                  (tables)
+    │   ├── pg_wal/                (write-ahead logs for recovery)
+    │   └── pg_xact/               (transaction status)
+    ├── pg_stat_tmp/               (statistics)
+    └── backups/                   (backup directory)
+  ```
+- **Backup**: YES, full backup + WAL archival
+- **Storage**: Separate fast disk (NVMe preferred)
+- **Permissions**: 700 (postgres user only)
+
+#### `/var/lib/mysql/` or `/var/lib/mariadb/`
+**Semantics**: MySQL/MariaDB database files
+- **Structure**:
+  ```
+  /var/lib/mysql/
+    ├── mysql/                     (system tables)
+    ├── your_database/
+    │   ├── table1.ibd             (InnoDB table)
+    │   ├── table2.ibd
+    │   └── table2.MYI             (MyISAM metadata)
+    ├── ib_logfile0                (redo log)
+    └── ibdata1                    (shared tablespace)
+  ```
+- **Backup**: YES, mysqldump or XtraBackup
+- **Storage**: Separate disk
+
+#### `/var/lib/mongodb/`
+**Semantics**: MongoDB data directory
+- **Structure**:
+  ```
+  /var/lib/mongodb/
+    ├── collection-0-5439...       (data files)
+    ├── collection-1-5439...
+    ├── index-3-5439...
+    ├── diagnostic.data/           (diagnostics)
+    └── journal/                   (write-ahead journal)
+  ```
+- **Backup**: YES, mongodump or snapshots
+- **Storage**: Separate disk
+
+#### `/var/lib/redis/`
+**Semantics**: Redis dump and AOF (append-only file)
+- **Contents**:
+  ```
+  /var/lib/redis/
+    ├── dump.rdb                   (RDB snapshot)
+    ├── appendonly.aof             (AOF journal)
+    └── temp-rewrite-aof           (AOF rewrite temp)
+  ```
+- **Backup**: MAYBE (Redis is often cache; depends on persistence mode)
+
+#### `/var/lib/elasticsearch/`
+**Semantics**: Elasticsearch shards and indices
+- **Structure**:
+  ```
+  /var/lib/elasticsearch/
+    ├── nodes/
+    │   ├── 0/
+    │   │   ├── indices/           (all indices)
+    │   │   │   └── my_index/
+    │   │   │       └── 0/
+    │   │   │           ├── index/
+    │   │   │           └── translog/
+    │   │   └── _state/            (node metadata)
+    │   └── 1/
+    └── repository-backup/         (snapshot repo)
+  ```
+- **Backup**: YES, via snapshots
+- **Storage**: Very large, separate fast disk
+
+#### `/var/lib/kafka/`
+**Semantics**: Kafka log segments (partitions)
+- **Structure**:
+  ```
+  /var/lib/kafka/
+    ├── topic1-0/
+    │   ├── 00000000000000000000.log
+    │   ├── 00000000000000000000.index
+    │   └── 00000000000000000000.timeindex
+    ├── topic2-0/
+    └── recovery-point-offset-checkpoint
+  ```
+- **Backup**: MAYBE (depends on replication factor and retention policy)
+- **Storage**: Very large, separate fast disk, high IOPS
+
+#### `/var/lib/docker/`
+**Semantics**: Docker containers, images, volumes
+- **Structure**:
+  ```
+  /var/lib/docker/
+    ├── containers/               (running container data)
+    ├── images/                   (image layers)
+    ├── volumes/                  (persistent volumes)
+    ├── overlay2/                 (union filesystem layers)
+    └── buildkit/
+  ```
+- **Backup**: MAYBE (depends on what's in containers; typically ephemeral)
+- **Storage**: Can be very large
+
+---
+
+### SPECIFIC APP PATTERNS
+
+#### Python/Node.js Web App (`/var/lib/myapp/` structure)
+```
+/var/lib/myapp/
+  ├── venv/                     (Python virtual env)
+  ├── node_modules/             (Node deps)
+  ├── data/
+  │   ├── db.sqlite3            (or postgres at /var/lib/postgresql/)
+  │   ├── uploads/              (user files)
+  │   └── session_store/        (session data)
+  └── cache/                    (moved to /var/cache/myapp/)
+
+/var/cache/myapp/
+  ├── compiled_assets/          (CSS/JS)
+  ├── thumbnails/
+  └── redis_cache/              (if using local Redis cache)
+
+/var/log/myapp/
+  ├── app.log
+  ├── access.log
+  └── error.log
+
+/run/myapp/
+  ├── myapp.pid
+  ├── myapp.sock
+  └── myapp.conf (runtime config)
+
+/etc/myapp/
+  ├── config.yaml
+  ├── settings.json
+  └── secrets.env (or vault)
+```
+
+#### ML Training Pipeline
+```
+/var/lib/ml/
+  ├── models/                  (trained models)
+  ├── experiments/             (training runs)
+  │   ├── exp-001/
+  │   │   ├── checkpoints/
+  │   │   ├── logs/
+  │   │   └── config.json
+  │   └── exp-002/
+  └── pipelines/               (data pipeline code)
+
+/var/cache/ml/
+  ├── datasets/                (preprocessed training data)
+  ├── features/                (computed features)
+  └── embeddings/              (precomputed embeddings)
+
+/var/log/ml/
+  ├── training.log             (training progress)
+  ├── inference.log            (inference requests)
+  └── data_pipeline.log
+
+/run/ml/
+  ├── training-job-1.pid
+  └── inference-server.sock
+
+/etc/ml/
+  ├── hyperparameters.yaml
+  ├── feature_config.json
+  └── model_registry.yaml
+```
+
+---
+
+## DECISION MATRIX: WHERE DOES IT GO?
+
+| Question | Answer | Location |
+|----------|--------|----------|
+| Is it an executable? | Boot-critical | `/bin` |
+| | Distro package | `/usr/bin` |
+| | Locally compiled | `/usr/local/bin` |
+| | Large vendor app | `/opt/{vendor}/{app}` |
+| Is it a library? | System lib | `/lib` |
+| | Distro lib | `/usr/lib` |
+| | Local lib | `/usr/local/lib` |
+| Is it configuration? | System-wide policy | `/etc/{app}` |
+| | Per-user settings | `~/.config/{app}` |
+| Is it persistent data? | Source of truth (can't regenerate) | `/var/lib/{app}` |
+| | Derived, regenerable | `/var/cache/{app}` |
+| | Trained ML model | `/var/lib/ml/models/` |
+| | Training data | `/var/cache/ml/datasets/` |
+| | Database files | `/var/lib/{db}/` |
+| Is it a log? | App audit trail | `/var/log/{app}` |
+| | Transient logs | `/run/log/` (journald) |
+| Is it runtime state? | PID, socket, IPC | `/run/{app}/` |
+| | Boot-transient | `/tmp/` or `/var/tmp/` |
+| | Shared memory | `/dev/shm/` |
+| Is it served to users? | Web content | `/var/www/` or `/srv/` |
+| | FTP files | `/srv/ftp/` |
+| | Git repos | `/srv/git/` |
+| Is it reference data? | Documentation | `/usr/share/doc/` |
+| | Man pages | `/usr/share/man/` |
+| | Fonts | `/usr/share/fonts/` |
+| | Icons | `/usr/share/icons/` |
+| | CA certs | `/usr/share/ca-certificates/` |
+| Is it kernel state? | Process info | `/proc/` (read-only) |
+| | Kernel params | `/sys/` (readable, writable for tuning) |
+
+---
+
+## PRODUCTION LAYOUT EXAMPLE: ML-POWERED WEB APP WITH INFERENCE
+
+```
+Application: recommendation-engine (web service + ML inference)
+
+Binaries:
+  /usr/local/bin/recommendation-engine  ← wrapper script
+
+Source code:
+  /opt/recommendation-engine/
+    ├── app/
+    ├── models/
+    ├── requirements.txt
+    └── setup.sh
+
+Configuration:
+  /etc/recommendation-engine/
+    ├── config.yaml              (system config)
+    ├── hyperparameters.json
+    ├── secrets.vault            (encrypted via Vault)
+    └── systemd/recommendation-engine.service
+
+Persistent data:
+  /var/lib/recommendation-engine/
+    ├── models/                  (trained models)
+    │   ├── bert-model/
+    │   └── classifier-v3/
+    ├── user-embeddings/         (user computed embeddings)
+    └── state.db                 (app state)
+
+Cache:
+  /var/cache/recommendation-engine/
+    ├── feature-cache/           (computed features; regenerable)
+    ├── query-cache/             (recent recommendations cache)
+    └── compiled-assets/         (CSS/JS)
+
+Logs:
+  /var/log/recommendation-engine/
+    ├── app.log                  (rotated daily)
+    ├── inference.log            (model inference timing)
+    ├── training.log             (model training runs)
+    └── access.log               (HTTP requests)
+
+Runtime:
+  /run/recommendation-engine/
+    ├── app.pid
+    ├── inference.sock           (IPC for inference calls)
+    └── state.lock
+
+Database:
+  /var/lib/postgresql/
+    └── recommendation_db/       (user data, model metadata)
+
+Monitoring:
+  /var/lib/prometheus/           (if using Prometheus)
+  /var/lib/grafana/              (if using Grafana)
+
+Backup strategy:
+  ✓ /var/lib/recommendation-engine/models/     (trained models)
+  ✓ /var/lib/postgresql/                       (user data)
+  ✓ /etc/recommendation-engine/                (configs)
+  ✗ /var/cache/recommendation-engine/          (regenerable)
+  ✗ /var/log/                                  (transient)
+  ✗ /run/                                      (ephemeral)
+```
+
+---
+
+## KEY SEMANTIC RULES (TL;DR)
+
+1. **Executables encode trust hierarchy**: `/bin` (OS) → `/usr/bin` (distro) → `/usr/local/bin` (admin) → `/opt` (vendor)
+
+2. **Data vs Logs**: 
+   - `/var/lib` = stuff the app needs to function (BACK IT UP)
+   - `/var/cache` = speedups that can be recalculated (DON'T BACK UP)
+   - `/var/log` = audit trail of what happened (ARCHIVE, DON'T BACK UP as primary)
+
+3. **Persistence vs Ephemeral**:
+   - `/tmp` = deleted anytime; OK to lose
+   - `/run` = cleared on reboot; needed during boot cycle
+   - `/var/lib` = survives indefinitely; never auto-cleaned
+
+4. **System vs User**:
+   - `/etc` = system policy (affects everyone)
+   - `~/.config` = user preference (only affects that user)
+
+5. **Serving data**:
+   - `/var/www` = standard web root (default)
+   - `/srv` = service data (non-web or multiple services)
+
+6. **ML-specific**:
+   - Models → `/var/lib/ml/models/` (backup them!)
+   - Training data → `/var/cache/ml/datasets/` (regenerable)
+   - Experiments → `/var/lib/ml/experiments/` (maybe backup)
+   - Feature cache → `/var/cache/ml/features/` (skip backup)
+
+7. **Distributed systems**:
+   - Database data → `/var/lib/{db}/` on separate fast disk
+   - Logs → `/var/log/` on separate disk (can be slower)
+   - Replication/WAL → `/var/lib/{db}/wal/` or `/var/lib/{db}/journal/`
+
+---
+
+**The core principle**: By choosing the right directory, you declare the file's **ownership**, **lifecycle**, and **backup strategy**. This makes systems predictable and maintainable.
